@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - College Voting System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .stats-card {
+            transition: all 0.3s ease;
+        }
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .nav-tabs .nav-link.active {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">Admin Dashboard</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Quick Stats -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card stats-card bg-primary text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Voters</h5>
+                        <h2>{{ total_voters }}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card bg-success text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Votes</h5>
+                        <h2>{{ total_votes }}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card bg-info text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">Voting Rate</h5>
+                        <h2>{{ ((total_votes / total_voters) * 100)|round(1) if total_voters > 0 else 0 }}%</h2>
+                        <small>Based on actual votes cast</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card bg-warning text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">Remaining Voters</h5>
+                        <h2>{{ total_voters - total_votes }}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-12 mt-3">
+                <div class="card stats-card bg-info text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">Current Voting Schedule</h5>
+                        <div id="votingScheduleDisplay">
+                            <p class="mb-0">Loading schedule...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="card">
+            <div class="card-body">
+                <ul class="nav nav-tabs" id="adminTabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="results-tab" data-bs-toggle="tab" href="#results" role="tab">Election Results</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="candidates-tab" data-bs-toggle="tab" href="#candidates" role="tab">Manage Candidates</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="voters-tab" data-bs-toggle="tab" href="#voters" role="tab">Voter Status</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="stats-tab" data-bs-toggle="tab" href="#stats" role="tab">Statistics</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="students-tab" data-bs-toggle="tab" href="#students" role="tab">Manage Students</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="schedule-tab" data-bs-toggle="tab" href="#schedule" role="tab">Voting Schedule</a>
+                    </li>
+                </ul>
+
+                <div class="tab-content mt-3" id="adminTabsContent">
+                    <!-- Election Results Tab -->
+                    <div class="tab-pane fade show active" id="results" role="tabpanel">
+                        {% for position in positions %}
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">{{ position.title }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Candidate</th>
+                                                <th>Branch</th>
+                                                <th>Section</th>
+                                                <th>Votes</th>
+                                                <th>Percentage</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for candidate in position.candidates %}
+                                            <tr>
+                                                <td>{{ candidate.name }}</td>
+                                                <td>{{ candidate.branch }}</td>
+                                                <td>{{ candidate.section }}</td>
+                                                <td>{{ candidate.votes }}</td>
+                                                <td>
+                                                    <div class="progress">
+                                                        <div class="progress-bar" role="progressbar" 
+                                                             style="width: {{ candidate.percentage }}%"
+                                                             aria-valuenow="{{ candidate.percentage }}" 
+                                                             aria-valuemin="0" 
+                                                             aria-valuemax="100">
+                                                            {{ candidate.percentage }}%
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Manage Candidates Tab -->
+                    <div class="tab-pane fade" id="candidates" role="tabpanel">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Add New Position</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="addPositionForm">
+                                            <div class="mb-3">
+                                                <label for="positionTitle" class="form-label">Position Title</label>
+                                                <input type="text" class="form-control" id="positionTitle" required>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">Add Position</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Add New Candidate</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="addCandidateForm">
+                                            <div class="mb-3">
+                                                <label for="candidatePosition" class="form-label">Position</label>
+                                                <select class="form-select" id="candidatePosition" required>
+                                                    {% for position in positions %}
+                                                    <option value="{{ position._id }}">{{ position.title }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="candidateName" class="form-label">Name</label>
+                                                <input type="text" class="form-control" id="candidateName" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="candidateBranch" class="form-label">Branch</label>
+                                                <input type="text" class="form-control" id="candidateBranch" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="candidateSection" class="form-label">Section</label>
+                                                <input type="text" class="form-control" id="candidateSection" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="candidateDescription" class="form-label">Description</label>
+                                                <textarea class="form-control" id="candidateDescription" rows="3"></textarea>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="candidateImage" class="form-label">Profile Image</label>
+                                                <input type="file" class="form-control" id="candidateImage" accept="image/*" onchange="previewImage(this)">
+                                                <div class="mt-2">
+                                                    <img id="imagePreview" src="#" alt="Preview" style="max-width: 200px; max-height: 200px; display: none;" class="rounded-circle">
+                                                </div>
+                                                <small class="text-muted">Recommended size: 400x400 pixels. Max file size: 2MB</small>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">Add Candidate</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- List of Positions and Candidates -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Current Positions and Candidates</h5>
+                            </div>
+                            <div class="card-body">
+                                {% for position in positions %}
+                                <div class="mb-4">
+                                    <h6 class="d-flex justify-content-between align-items-center">
+                                        {{ position.title }}
+                                        <button class="btn btn-danger btn-sm delete-position" 
+                                                data-position-id="{{ position._id }}">
+                                            <i class="bi bi-trash"></i> Delete Position
+                                        </button>
+                                    </h6>
+                                    <div class="table-responsive">
+                                        <table class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Image</th>
+                                                    <th>Name</th>
+                                                    <th>Branch</th>
+                                                    <th>Section</th>
+                                                    <th>Description</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for candidate in position.candidates %}
+                                                <tr>
+                                                    <td>
+                                                        {% if candidate.image_url %}
+                                                        <img src="{{ candidate.image_url }}" alt="{{ candidate.name }}" 
+                                                             class="rounded-circle" style="width: 50px; height: 50px; object-fit: cover;">
+                                                        {% else %}
+                                                        <div class="rounded-circle bg-secondary" 
+                                                             style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+                                                            <i class="bi bi-person text-white"></i>
+                                                        </div>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>{{ candidate.name }}</td>
+                                                    <td>{{ candidate.branch }}</td>
+                                                    <td>{{ candidate.section }}</td>
+                                                    <td>{{ candidate.description }}</td>
+                                                    <td>
+                                                        <button class="btn btn-danger btn-sm delete-candidate" 
+                                                                data-candidate-id="{{ candidate._id }}">
+                                                            <i class="bi bi-trash"></i> Delete
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Voter Status Tab -->
+                    <div class="tab-pane fade" id="voters" role="tabpanel">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Voter Status</h5>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-outline-primary" id="exportVoters">Export List</button>
+                                    <button type="button" class="btn btn-outline-danger" id="deleteAllVotes">Delete All Votes</button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Student ID</th>
+                                                <th>Name</th>
+                                                <th>Branch</th>
+                                                <th>Section</th>
+                                                <th>Status</th>
+                                                <th>Voted At</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for user in users %}
+                                            <tr>
+                                                <td>{{ user.student_id }}</td>
+                                                <td>{{ user.name }}</td>
+                                                <td>{{ user.branch }}</td>
+                                                <td>{{ user.section }}</td>
+                                                <td>
+                                                    {% if user.has_voted %}
+                                                    <span class="badge bg-success">Voted</span>
+                                                    {% else %}
+                                                    <span class="badge bg-danger">Not Voted</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ user.voted_at.strftime('%Y-%m-%d %H:%M:%S') if user.has_voted else '-' }}</td>
+                                                <td>
+                                                    {% if user.has_voted %}
+                                                    <button class="btn btn-danger btn-sm delete-vote" 
+                                                            data-student-id="{{ user.student_id }}"
+                                                            data-vote-id="{{ user.vote_id }}">
+                                                        <i class="bi bi-trash"></i> Remove Vote
+                                                    </button>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Tab -->
+                    <div class="tab-pane fade" id="stats" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card mb-4">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Branch-wise Statistics</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Branch</th>
+                                                        <th>Total Voters</th>
+                                                        <th>Voted</th>
+                                                        <th>Percentage</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for branch, stats in branch_stats.items() %}
+                                                    <tr>
+                                                        <td>{{ branch }}</td>
+                                                        <td>{{ stats.total_users }}</td>
+                                                        <td>{{ stats.voted }}</td>
+                                                        <td>
+                                                            <div class="progress">
+                                                                <div class="progress-bar" role="progressbar" 
+                                                                     style="width: {{ stats.percentage }}%"
+                                                                     aria-valuenow="{{ stats.percentage }}" 
+                                                                     aria-valuemin="0" 
+                                                                     aria-valuemax="100">
+                                                                    {{ stats.percentage }}%
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card mb-4">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Section-wise Statistics</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Section</th>
+                                                        <th>Total Voters</th>
+                                                        <th>Voted</th>
+                                                        <th>Percentage</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for section, stats in section_stats.items() %}
+                                                    <tr>
+                                                        <td>{{ section }}</td>
+                                                        <td>{{ stats.total_users }}</td>
+                                                        <td>{{ stats.voted }}</td>
+                                                        <td>
+                                                            <div class="progress">
+                                                                <div class="progress-bar" role="progressbar" 
+                                                                     style="width: {{ stats.percentage }}%"
+                                                                     aria-valuenow="{{ stats.percentage }}" 
+                                                                     aria-valuemin="0" 
+                                                                     aria-valuemax="100">
+                                                                    {{ stats.percentage }}%
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Manage Students Tab -->
+                    <div class="tab-pane fade" id="students" role="tabpanel">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Add New Student</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="addStudentForm">
+                                            <div class="mb-3">
+                                                <label for="studentId" class="form-label">Student ID</label>
+                                                <input type="text" class="form-control" id="studentId" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="studentName" class="form-label">Name</label>
+                                                <input type="text" class="form-control" id="studentName" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="studentMobile" class="form-label">Mobile Number</label>
+                                                <input type="text" class="form-control" id="studentMobile" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="studentBranch" class="form-label">Branch</label>
+                                                <input type="text" class="form-control" id="studentBranch" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="studentSection" class="form-label">Section</label>
+                                                <input type="text" class="form-control" id="studentSection" required>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">Add Student</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Student List</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Student ID</th>
+                                                        <th>Name</th>
+                                                        <th>Branch</th>
+                                                        <th>Section</th>
+                                                        <th>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for user in users %}
+                                                    {% if not user.is_admin %}
+                                                    <tr>
+                                                        <td>{{ user.student_id }}</td>
+                                                        <td>{{ user.name }}</td>
+                                                        <td>{{ user.branch }}</td>
+                                                        <td>{{ user.section }}</td>
+                                                        <td>
+                                                            <button class="btn btn-danger btn-sm delete-student" 
+                                                                    data-student-id="{{ user.student_id }}">
+                                                                <i class="bi bi-trash"></i> Delete
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                    {% endif %}
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Voting Schedule Tab -->
+                    <div class="tab-pane fade" id="schedule" role="tabpanel">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Set Voting Schedule</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="votingScheduleForm">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="startDate" class="form-label">Start Date</label>
+                                                <input type="date" class="form-control" id="startDate" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="endDate" class="form-label">End Date</label>
+                                                <input type="date" class="form-control" id="endDate" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="startTime" class="form-label">Start Time</label>
+                                                <input type="time" class="form-control" id="startTime" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="endTime" class="form-label">End Time</label>
+                                                <input type="time" class="form-control" id="endTime" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Set Schedule</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Add Position Form Handler
+        document.getElementById('addPositionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const title = document.getElementById('positionTitle').value;
+            
+            fetch('/admin/add_position', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': "{{ csrf_token() }}"
+                },
+                body: JSON.stringify({ title: title })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            });
+        });
+
+        // Image preview function
+        function previewImage(input) {
+            const preview = document.getElementById('imagePreview');
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                
+                // Check file size (2MB limit)
+                if (file.size > 2 * 1024 * 1024) {
+                    alert('File size must be less than 2MB');
+                    input.value = '';
+                    preview.style.display = 'none';
+                    return;
+                }
+                
+                // Check file type
+                if (!file.type.startsWith('image/')) {
+                    alert('Please select an image file');
+                    input.value = '';
+                    preview.style.display = 'none';
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            } else {
+                preview.style.display = 'none';
+            }
+        }
+
+        // Update the add candidate form handler
+        document.getElementById('addCandidateForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('position_id', document.getElementById('candidatePosition').value);
+            formData.append('name', document.getElementById('candidateName').value);
+            formData.append('branch', document.getElementById('candidateBranch').value);
+            formData.append('section', document.getElementById('candidateSection').value);
+            formData.append('description', document.getElementById('candidateDescription').value);
+            
+            const imageFile = document.getElementById('candidateImage').files[0];
+            if (imageFile) {
+                formData.append('image', imageFile);
+            }
+            
+            // Show loading state
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalText = submitButton.innerHTML;
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...';
+            
+            fetch('/admin/add_candidate', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': "{{ csrf_token() }}"
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message);
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalText;
+                }
+            })
+            .catch(error => {
+                alert('An error occurred while uploading the candidate.');
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalText;
+            });
+        });
+
+        // Export Voters List
+        document.getElementById('exportVoters').addEventListener('click', function() {
+            window.location.href = '/admin/export_voters';
+        });
+
+        // Add Student Form Handler
+        document.getElementById('addStudentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const studentData = {
+                student_id: document.getElementById('studentId').value,
+                name: document.getElementById('studentName').value,
+                mobile: document.getElementById('studentMobile').value,
+                branch: document.getElementById('studentBranch').value,
+                section: document.getElementById('studentSection').value
+            };
+            
+            fetch('/admin/add_student', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': "{{ csrf_token() }}"
+                },
+                body: JSON.stringify(studentData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            });
+        });
+
+        // Delete Student Handler
+        document.querySelectorAll('.delete-student').forEach(button => {
+            button.addEventListener('click', function() {
+                if (confirm('Are you sure you want to delete this student?')) {
+                    const studentId = this.dataset.studentId;
+                    fetch(`/admin/delete_student/${studentId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': "{{ csrf_token() }}"
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            alert(data.message);
+                        }
+                    });
+                }
+            });
+        });
+
+        // Delete Position Handler
+        document.querySelectorAll('.delete-position').forEach(button => {
+            button.addEventListener('click', function() {
+                if (confirm('Are you sure you want to delete this position? This will also delete all associated candidates and votes.')) {
+                    const positionId = this.dataset.positionId;
+                    fetch(`/admin/delete_position/${positionId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': "{{ csrf_token() }}"
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            alert(data.message);
+                        }
+                    });
+                }
+            });
+        });
+
+        // Delete Candidate Handler
+        document.querySelectorAll('.delete-candidate').forEach(button => {
+            button.addEventListener('click', function() {
+                if (confirm('Are you sure you want to delete this candidate? This will also delete all associated votes.')) {
+                    const candidateId = this.dataset.candidateId;
+                    fetch(`/admin/delete_candidate/${candidateId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': "{{ csrf_token() }}"
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            alert(data.message);
+                        }
+                    });
+                }
+            });
+        });
+
+        // Delete All Votes Handler
+        document.getElementById('deleteAllVotes').addEventListener('click', function() {
+            if (confirm('Are you sure you want to delete ALL votes? This action cannot be undone.')) {
+                fetch('/admin/delete_all_votes', {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': "{{ csrf_token() }}"
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert(data.message || 'Failed to delete votes');
+                    }
+                })
+                .catch(error => {
+                    alert('An error occurred while deleting votes');
+                });
+            }
+        });
+
+        // Update Delete Vote Handler
+        document.querySelectorAll('.delete-vote').forEach(button => {
+            button.addEventListener('click', function() {
+                if (confirm('Are you sure you want to remove this vote? The student will be able to vote again.')) {
+                    const voteId = this.dataset.voteId;
+                    const studentId = this.dataset.studentId;
+                    
+                    fetch(`/admin/delete_vote/${voteId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': "{{ csrf_token() }}"
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();  // Reload the page to update all statistics
+                        } else {
+                            alert(data.message || 'Failed to remove vote');
+                        }
+                    })
+                    .catch(error => {
+                        alert('An error occurred while removing the vote');
+                    });
+                }
+            });
+        });
+
+        // Voting Schedule Form Handler
+        document.getElementById('votingScheduleForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const scheduleData = {
+                start_date: document.getElementById('startDate').value,
+                end_date: document.getElementById('endDate').value,
+                start_time: document.getElementById('startTime').value,
+                end_time: document.getElementById('endTime').value
+            };
+            
+            fetch('/admin/set_voting_schedule', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': "{{ csrf_token() }}"
+                },
+                body: JSON.stringify(scheduleData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Voting schedule updated successfully');
+                    loadCurrentSchedule();
+                } else {
+                    alert(data.message || 'Failed to update schedule');
+                }
+            })
+            .catch(error => {
+                alert('An error occurred while updating the schedule');
+            });
+        });
+
+        // Function to update voting schedule display
+        function updateVotingScheduleDisplay(schedule) {
+            const display = document.getElementById('votingScheduleDisplay');
+            if (schedule) {
+                display.innerHTML = `
+                    <p class="mb-0">
+                        <strong>Start:</strong> ${schedule.start_date} at ${schedule.start_time}<br>
+                        <strong>End:</strong> ${schedule.end_date} at ${schedule.end_time}
+                    </p>
+                `;
+            } else {
+                display.innerHTML = '<p class="mb-0">No voting schedule set</p>';
+            }
+        }
+
+        // Update the loadCurrentSchedule function
+        function loadCurrentSchedule() {
+            fetch('/admin/get_voting_schedule', {
+                headers: {
+                    'X-CSRFToken': "{{ csrf_token() }}"
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.schedule) {
+                        document.getElementById('startDate').value = data.schedule.start_date;
+                        document.getElementById('endDate').value = data.schedule.end_date;
+                        document.getElementById('startTime').value = data.schedule.start_time;
+                        document.getElementById('endTime').value = data.schedule.end_time;
+                        updateVotingScheduleDisplay(data.schedule);
+                    } else {
+                        updateVotingScheduleDisplay(null);
+                    }
+                }
+            });
+        }
+
+        // Load schedule when page loads
+        document.addEventListener('DOMContentLoaded', loadCurrentSchedule);
+    </script>
+</body>
+</html> 

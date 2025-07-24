@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - College Voting System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+        }
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .card-header {
+            background-color: #007bff;
+            color: white;
+            text-align: center;
+            border-radius: 10px 10px 0 0 !important;
+            padding: 20px;
+        }
+        .form-control {
+            border-radius: 5px;
+            padding: 10px;
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .user-type-selector {
+            margin-bottom: 20px;
+        }
+        .user-type-selector .btn {
+            width: 50%;
+            border-radius: 5px;
+        }
+        .user-type-selector .btn.active {
+            background-color: #007bff;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="login-container">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">College Voting System</h3>
+                </div>
+                <div class="card-body p-4">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    {% if not otp_sent %}
+                        <form method="POST" id="loginForm">
+                            {{ form.csrf_token }}
+                            
+                            <div class="mb-3">
+                                <label for="user_type" class="form-label">Login As</label>
+                                <div class="user-type-selector btn-group" role="group">
+                                    <input type="radio" class="btn-check" name="user_type" id="user" value="user" checked>
+                                    <label class="btn btn-outline-primary" for="user">
+                                        <i class="bi bi-person"></i> Student
+                                    </label>
+                                    
+                                    <input type="radio" class="btn-check" name="user_type" id="admin" value="admin">
+                                    <label class="btn btn-outline-primary" for="admin">
+                                        <i class="bi bi-shield-lock"></i> Admin
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="student_id" class="form-label">Student ID</label>
+                                {{ form.student_id(class="form-control", placeholder="Enter your student ID") }}
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="mobile_number" class="form-label">Mobile Number</label>
+                                {{ form.mobile_number(class="form-control", placeholder="Enter your mobile number") }}
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-box-arrow-in-right"></i> Login
+                            </button>
+                        </form>
+                    {% else %}
+                        <form id="otpForm">
+                            {{ otp_form.csrf_token }}
+                            <div class="mb-3">
+                                <label for="otp" class="form-label">Enter OTP</label>
+                                {{ otp_form.otp(class="form-control", placeholder="Enter the OTP sent to your mobile") }}
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Verify OTP
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('otpForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const otp = document.getElementById('otp').value;
+            
+            fetch('/verify_otp', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': "{{ csrf_token() }}"
+                },
+                body: JSON.stringify({ otp: otp })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = data.redirect;
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            });
+        });
+
+        // Update user type selection UI
+        document.querySelectorAll('.user-type-selector input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                document.querySelectorAll('.user-type-selector label').forEach(label => {
+                    label.classList.remove('active');
+                });
+                this.nextElementSibling.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html> 
